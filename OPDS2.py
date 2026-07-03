@@ -16,7 +16,6 @@ from mv_search.constants import (
     Crosswalk,
     CuratedBookshelves,
     Language,
-    LoCCMainClass,
     OrderBy,
     SearchField,
     SearchType,
@@ -848,22 +847,12 @@ class OPDSFeed:
         for child in children:
             code = child["code"]
             label = child.get("label") or code
-            prefix, sep, rest = label.partition(":")
-            if sep and prefix.strip().upper() == code.upper():
-                label = rest.strip()
-
-            # Below the top level, drop the redundant main-class prefix the
-            # parent crumb already conveys. Try the full label first (e.g.
-            # "History: America:"), then just its lead segment ("History:").
-            # DB locc strings use "Language and Literatures:" (plural); see LoCCMainClass.P.
             if parent:
-                main = code[0].upper() if code else ""
-                mc = next((i for i in LoCCMainClass if i.code == main), None)
-                if mc:
-                    for cand in (mc.label.strip(), mc.label.split(":", 1)[0].strip()):
-                        if cand and label.upper().startswith(cand.upper() + ":"):
-                            label = label[len(cand) + 1 :].strip()
-                            break
+                _, sep, rest = label.partition(":")
+                if sep:
+                    label = rest.strip()
+                if counts.get(code, 0) == 0:
+                    continue
 
             nav_item = _nav(f"/opds/loccs?parent={code}", label)
             if code in counts:
@@ -871,7 +860,7 @@ class OPDSFeed:
             nav.append(nav_item)
 
         return {
-            "metadata": {"title": "Project Gutenberg", "numberOfItems": len(children)},
+            "metadata": {"title": "Project Gutenberg", "numberOfItems": len(nav)},
             "links": [
                 _link(
                     "self", f"/opds/loccs?parent={parent}" if parent else "/opds/loccs"
@@ -954,7 +943,7 @@ class OPDSFeed:
     def _build_subjects_index(self) -> Dict:
         subjects = sorted(
             self.fts.list_subjects(), key=lambda x: x["book_count"], reverse=True
-        )
+        )[:100]
         return {
             "metadata": {"title": "Project Gutenberg", "numberOfItems": len(subjects)},
             "links": [
@@ -967,7 +956,7 @@ class OPDSFeed:
                     **_nav(f"/opds/subjects?id={s['id']}", s["name"]),
                     "properties": {"numberOfItems": s["book_count"]},
                 }
-                for s in subjects[:100]
+                for s in subjects
             ],
         }
 

@@ -285,10 +285,10 @@ class SearchQuery:
                 FROM mn_books_loccs mbl
                 JOIN loccs lc ON lc.pk = mbl.fk_loccs
                 WHERE mbl.fk_books = book_id
-                  AND lc.pk LIKE {}
+                  AND lc.pk = {}
             )
             """,
-            f"{code}%",
+            code,
         )
 
     def contributor_role(self, role: str) -> "SearchQuery":
@@ -616,6 +616,8 @@ class FullTextSearch:
             GROUP BY
                 s.pk,
                 s.subject
+            HAVING
+                COUNT(mbs.fk_books) > 0
             ORDER BY
                 book_count DESC,
                 s.subject
@@ -831,7 +833,7 @@ class FullTextSearch:
             return {"subjects": None, "languages": None}
 
     def get_locc_children(self, parent: Union[LoCCMainClass, str]) -> List[Dict]:
-        """Get LoCC children for a parent code."""
+        """Return LoCC children for parent."""
         if isinstance(parent, LoCCMainClass):
             parent_code = parent.code
         else:
@@ -843,6 +845,9 @@ class FullTextSearch:
                 {"code": item.code, "label": item.label}
                 for item in sorted_classes
             ]
+
+        if len(parent_code) != 1:
+            return []
 
         sql = text(
             """
@@ -859,8 +864,7 @@ class FullTextSearch:
         )
 
         with self.Session() as session:
-            rows = session.execute(sql, {"pattern": f"{parent_code}%", "parent": parent_code}).mappings().all()
-            return [
-                {"code": r["code"], "label": r["label"]}
-                for r in rows
-            ]
+            rows = session.execute(
+                sql, {"pattern": f"{parent_code}%", "parent": parent_code}
+            ).mappings().all()
+            return [{"code": r["code"], "label": r["label"]} for r in rows]
