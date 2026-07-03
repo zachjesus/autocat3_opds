@@ -128,8 +128,8 @@ def _navigation_group() -> Dict:
     return {
         "metadata": {"title": "Navigation", "numberOfItems": 2},
         "navigation": [
-            _nav("/opds/loccs", "Browse Subjects"),
             _nav("/opds/bookshelves", "Browse Bookshelves"),
+            _nav("/opds/loccs", "Browse Subjects"),
         ],
     }
 
@@ -930,13 +930,11 @@ class OPDSFeed:
                 _, sep, rest = label.partition(":")
                 if sep:
                     label = rest.strip()
-                if counts.get(code, 0) == 0:
-                    continue
-
-            nav_item = _nav(f"/opds/loccs?parent={code}", label)
             count = self._locc_nav_item_count(code)
-            if count is not None:
-                nav_item["properties"] = {"numberOfItems": count}
+            if not count:
+                continue
+            nav_item = _nav(f"/opds/loccs?parent={code}", label)
+            nav_item["properties"] = {"numberOfItems": count}
             nav.append(nav_item)
 
         return {

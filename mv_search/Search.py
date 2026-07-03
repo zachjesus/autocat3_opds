@@ -904,6 +904,11 @@ class FullTextSearch:
             FROM loccs lc
             WHERE lc.pk LIKE :pattern
               AND lc.pk != :parent
+              AND EXISTS (
+                SELECT 1
+                FROM mn_books_loccs mbl
+                WHERE mbl.fk_loccs = lc.pk
+              )
             ORDER BY
                 char_length(lc.pk),
                 lc.pk
